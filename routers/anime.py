@@ -8,17 +8,17 @@ from typing import Optional
 from breadbox import ArchiveRouter
 
 class AnimeExternalInfo(BaseModel):
-    myanimelist: Optional[HttpUrl] = Field(
+    myanimelist: Optional[str] = Field(
         default=None,
         description='Link to the anime on MyAnimeList.net',
         examples=['https://myanimelist.net/anime/38759']
     )
-    jikan: Optional[HttpUrl] = Field(
+    jikan: Optional[str] = Field(
         default=None,
         description='Link to the anime on Jikan.moe (An unofficial MyAnimeList API)',
         examples=['https://api.jikan.moe/v4/anime/38759']
     )
-    anilist: Optional[HttpUrl] = Field(
+    anilist: Optional[str] = Field(
         default=None,
         description='Link to AniList.co',
         examples=['https://anilist.co/anime/105914']
@@ -30,7 +30,7 @@ class AnimeTorrentInfo(BaseModel):
         description='Magnet link of the torrent this media is from',
         examples=['magnet:?xt=urn:btih:692aab53b69012278079b5983c75daff8b8c444f...']
     )
-    url: Optional[HttpUrl] = Field(
+    url: Optional[str] = Field(
         default=None,
         description='Link to torrent page (Nyaa.si usually)',
         examples=['https://nyaa.si/view/1557245']

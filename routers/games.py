@@ -8,7 +8,7 @@ from typing import Optional
 from breadbox import ArchiveRouter
 
 class GameExternalInfo(BaseModel):
-    wikipedia: Optional[HttpUrl] = Field(
+    wikipedia: Optional[str] = Field(
         default=None,
         description='Link to Wikipedia',
         examples=['https://en.wikipedia.org/wiki/Super_Mario_Galaxy_2']

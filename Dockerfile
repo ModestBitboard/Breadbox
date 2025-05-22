@@ -8,10 +8,10 @@ FROM python:3.12
 
 WORKDIR /app
 
-COPY breadbox .
-COPY routers .
+COPY breadbox ./breadbox
+COPY routers ./routers
 COPY main.py .
-COPY database.py .
+COPY users.py .
 COPY requirements.txt .
 
 RUN pip install -r requirements.txt
@@ -20,4 +20,4 @@ ENV BREADBOX_CONFIG="/config"
 
 EXPOSE 80/tcp
 
-ENTRYPOINT ["python", "./main.py"]
+ENTRYPOINT ["python", "main.py"]
