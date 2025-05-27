@@ -176,6 +176,8 @@ class ArchiveRouter(APIRouter):
 
                 _path = self.archive.path / str(id) / branch / filename
 
+                _path = _path.resolve()  # Adds support for symlinks
+
                 if _path.is_file():
                     return FileResponse(
                         _path,
