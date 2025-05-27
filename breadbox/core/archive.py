@@ -15,6 +15,7 @@ import string
 import json
 
 from breadbox.core.config import Config
+from breadbox.core.logger import log
 from breadbox.core.responses import respond
 from breadbox.core.security import rate_limiter
 
@@ -178,12 +179,16 @@ class ArchiveRouter(APIRouter):
 
                 _path = _path.resolve()  # Adds support for symlinks
 
+                log.debug("'%s'" %  _path)
+
                 if _path.is_file():
+                    log.debug("Task success: file exists")
                     return FileResponse(
                         _path,
                         filename=nickname
                     )
                 else:
+                    log.debug("Task failed: file doesn't exist")
                     return respond('not_in_archive')
 
             @functools.wraps(func)
