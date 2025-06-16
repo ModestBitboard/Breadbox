@@ -2,7 +2,7 @@
 Operations related to the archive containing Anime OVAs, Movies, Seasons, etc.
 """
 
-from pydantic import BaseModel, HttpUrl, Field
+from pydantic import BaseModel, Field
 from typing import Optional
 
 from breadbox import ArchiveRouter
@@ -82,32 +82,59 @@ def anime_logo():
     """Logo of the anime"""
     return 'logo.png'
 
-@router.image('/episodes/{episode}/thumbnail')
-def anime_episode_thumbnail(episode: int):
-    """The thumbnail for an episode of the anime"""
-    return 'episode_%i.png' % episode
+@router.image('/media/{episode}/thumbnail')
+def anime_media_thumbnail(media: str):
+    """The thumbnail for a piece of episode or bonus content of the anime"""
+    if media.isnumeric():
+        return 'EP-%02d.png' % int(media)
+    else:
+        return '%s.png' % media.upper()
 
-@router.media('/episodes/{episode}')
-def anime_episode(episode: int):
-    """Episode of the anime"""
-    return '%02d.mkv' % episode
-
+@router.media('/media/{media}', overwrite_protection=True)
+def anime_media(media: str):
+    """Episode or bonus content of the anime"""
+    if media.isnumeric():
+        return '%02d.mkv' % int(media)
+    else:
+        return 'bonus/%s.mkv' % media.upper()
 
 # noinspection PyShadowingBuiltins
-@router.get('/{id}/episodes')
-def list_anime_episodes(id: int):
+@router.get('/{id}/media')
+def list_anime_media(id: int):
     """
-    List all available episodes of an anime
+    List all available media of an anime, including episodes and bonus content
     """
 
     if not router.archive.check_item(id):
         raise FileNotFoundError
 
+    # List episodes
     episodes = []
 
-    for ep in (router.archive.path / str(id) / 'media').iterdir():
-        if ep.stem.isnumeric():
-            episodes.append(int(ep.stem))
+    for file in (router.archive.path / str(id) / 'media').iterdir():
+        if not file.stem.isnumeric():
+            continue
+        if file.resolve().is_file():
+            episodes.append(int(file.stem))
 
     episodes.sort()
-    return episodes
+
+    # List any bonus content
+    bonus_dir = (router.archive.path / str(id) / 'media' / 'bonus').resolve()
+    bonus = []
+
+    if bonus_dir.is_dir():
+        for file in bonus_dir.iterdir():
+            if file.stem.startswith(('.', '_')):
+                continue
+            if not file.stem.isupper():
+                continue
+            if file.resolve().is_file():
+                bonus.append(file.stem)
+
+        bonus.sort()
+
+    return {
+        "episodes": episodes,
+        "bonus": bonus
+    }

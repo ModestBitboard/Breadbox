@@ -19,7 +19,7 @@ from typing import Callable, Dict, Any
 
 from breadbox.core.logger import log
 from breadbox.core.config import Config, CONFIG_PATH
-from breadbox.core.security import PermissionMiddleware, rate_limiter
+from breadbox.core.security import SecurityMiddleware, rate_limiter
 from breadbox.core.archive import ArchiveRouter
 
 
@@ -119,9 +119,9 @@ class Breadbox(FastAPI):
         # noinspection PyTypeChecker
         self.add_middleware(SlowAPIMiddleware)
 
-        # Install permission middleware
+        # Install security middleware
         # noinspection PyTypeChecker
-        self.add_middleware(PermissionMiddleware, user_handler=user_db_handler)
+        self.add_middleware(SecurityMiddleware, user_handler=user_db_handler)
 
         # Mount static directory
         self.mount('/static', StaticFiles(directory=ASSETS_PATH), name="static")
@@ -187,8 +187,14 @@ class Breadbox(FastAPI):
         if Config.advanced.auth_cookie:
             docs += f"- Cookie: `{Config.advanced.auth_cookie}`\n"
 
-        if Config.advanced.auth_query:
-            docs += f"- Query Parameter: `{Config.advanced.auth_query}`\n"
+        if Config.signed_urls.enabled:
+            docs += (f"\n## Signed URLs\
+            \nIf for whatever reason you can't pass the server your API key (e.g. interfacing with VLC) \
+            you can request a signed URL by adding `signUrl` to your query parameters. \
+            The server will return a signed URL that expires **{Config.signed_urls.duration}** minutes \
+            after it was issued.\
+            \nSigned URLs are limited to GET requests only, and can only be used by the same IP address \
+            that requested it.")
 
         if Config.advanced.read_only:
             docs += "\n> ***Note: The archive is set to Read-only mode. Nobody can make changes at this time.***"
@@ -217,7 +223,6 @@ class Breadbox(FastAPI):
         if not openapi_schema.get("security"):
             openapi_schema["security"] = []
 
-
         if Config.advanced.auth_header:
             openapi_schema["components"]["securitySchemes"]["APIKeyHeader"] = {
                 "type": "apiKey",
@@ -226,16 +231,6 @@ class Breadbox(FastAPI):
             }
             openapi_schema["security"].append({
                 "APIKeyHeader": []
-            })
-
-        if Config.advanced.auth_query:
-            openapi_schema["components"]["securitySchemes"]["APIKeyQuery"] = {
-                "type": "apiKey",
-                "in": "query",
-                "name": Config.advanced.auth_query
-            }
-            openapi_schema["security"].append({
-                "APIKeyQuery": []
             })
 
         self.openapi_schema = openapi_schema

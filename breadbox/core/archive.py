@@ -124,11 +124,12 @@ class ArchiveRouter(APIRouter):
             name='update_' + self.name.lower() + '_info'
         )
 
-    def add_file(self, path: str, branch: str | Path):
+    def add_file(self, path: str, branch: str | Path, overwrite_protection: bool = False):
         """
         Creates read-write endpoints for a file inside an item.
         :param path: URL path relative to the item path
         :param branch: Directory within the item to serve files from. Usually `media` or `images`.
+        :param overwrite_protection: If true, the file can only be added and will not be able to be overwritten.
         """
         if path.startswith('/'):
             path = path.removeprefix('/')
@@ -191,6 +192,15 @@ class ArchiveRouter(APIRouter):
                     log.debug("Task failed: file doesn't exist")
                     return respond('not_in_archive')
 
+            if overwrite_protection:
+                def _upload_conflict(file: Path):
+                    return file.exists()
+            else:
+                # noinspection PyUnusedLocal
+                def _upload_conflict(file: Path):
+                    return False
+
+
             @functools.wraps(func)
             async def _upload_file(*args, **kwargs):
                 bound = upload_sig.bind(*args, **kwargs)
@@ -202,6 +212,12 @@ class ArchiveRouter(APIRouter):
 
                 filename = func(*bound.args, **bound.kwargs)
 
+                branch_path = self.archive.path / str(id) / branch
+                _path = branch_path / filename
+
+                if _upload_conflict(_path):
+                    return respond('already_exists')
+
                 media_type = mimetypes.guess_type(filename)[0]
 
                 if file.content_type != media_type:
@@ -210,12 +226,8 @@ class ArchiveRouter(APIRouter):
                 if not self.archive.check_item(id):
                     raise respond('not_in_archive')
 
-                branch_path = self.archive.path / str(id) / branch
-
                 if not branch_path.is_dir():
                     branch_path.mkdir()
-
-                _path = branch_path / filename
 
                 _st = time.time()
 
@@ -254,19 +266,21 @@ class ArchiveRouter(APIRouter):
 
         return wrapper
 
-    def image(self, path: str):
+    def image(self, path: str, overwrite_protection: bool = False):
         """
         Decorator that creates read-write endpoints for an image inside an item
         :param path: Path to the image file relative to the item's `images` directory
+        :param overwrite_protection: If true, the file can only be added and will not be able to be overridden.
         """
-        return self.add_file(path, 'images')
+        return self.add_file(path=path, branch='images', overwrite_protection=overwrite_protection)
 
-    def media(self, path: str):
+    def media(self, path: str, overwrite_protection: bool = False):
         """
         Decorator that creates read-write endpoints for a media file inside an item
         :param path: URL to bind functions to. Will be prefixed with `/{id}/`.
+        :param overwrite_protection: If true, the file can only be added and will not be able to be overridden.
         """
-        return self.add_file(path, 'media')
+        return self.add_file(path=path, branch='media', overwrite_protection=overwrite_protection)
 
 
 # noinspection PyShadowingBuiltins

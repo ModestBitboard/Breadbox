@@ -39,6 +39,10 @@ class _RateLimits(BaseModel):
     enabled: bool = True
     rules: tuple = ("3/second", "20/minute")
 
+class _SignedUrls(BaseModel):
+    enabled: bool = True
+    duration: int = 720
+
 class _Permissions(BaseModel):
     read: groups = 'users'
     write: groups = 'contributors'
@@ -53,12 +57,12 @@ class _Advanced(BaseModel):
     protected_prefixes: tuple = ('/archive',)
     auth_header: Optional[str] = "X-API-KEY"
     auth_cookie: Optional[str] = ""
-    auth_query: Optional[str] = ""
 
 class ConfigModel(BaseModel):
     app: _App = _App()
     server: _Server = _Server()
     rate_limits: _RateLimits = _RateLimits()
+    signed_urls: _SignedUrls = _SignedUrls()
     permissions: _Permissions = _Permissions()
     archives: dict[str, Path] = {}
     advanced: _Advanced = _Advanced()

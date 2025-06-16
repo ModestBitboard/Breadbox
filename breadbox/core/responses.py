@@ -20,6 +20,12 @@ RESPONSES = {
         "details": "You need an API key to access this endpoint."
     },
 
+    "auth_required": {
+        "status": 401,
+        "message": "Unauthorized",
+        "details": "You must provide authentication, such as an API key or a signed URL."
+    },
+
     "invalid_api_key": {
         "status": 403,
         "message": "Forbidden",
@@ -44,6 +50,30 @@ RESPONSES = {
         "details": "This feature has been disabled."
     },
 
+    "url_signature_mismatch": {
+        "status": 403,
+        "message": "Forbidden",
+        "details": "The URL signature is not valid or has been tampered with."
+    },
+
+    "signed_url_method": {
+        "status": 405,
+        "message": "Method Not Allowed",
+        "details": "Only GET requests are supported by signed URLs."
+    },
+
+    "expired_url": {
+        "status": 403,
+        "message": "Forbidden",
+        "details": "This signed URL has expired."
+    },
+
+    "expires_too_late": {
+        "status": 403,
+        "message": "Forbidden",
+        "details": "The signed URL expiry time exceeds the acceptable duration."
+    },
+
     "not_in_archive": {
         "status": 404,
         "message": "Not Found",
@@ -58,7 +88,7 @@ RESPONSES = {
 
     "already_exists": {
         "status": 409,
-        "message": "Exists",
+        "message": "Conflict",
         "details": "The resource you're trying to create already exists."
     },
 

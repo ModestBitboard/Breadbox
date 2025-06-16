@@ -19,6 +19,13 @@ from starlette.responses import Response, JSONResponse
 
 from typing import Callable, Optional
 
+from datetime import datetime, timezone
+import hmac
+import hashlib
+import base64
+import json
+import secrets
+
 from breadbox.core.config import Config
 from breadbox.core.responses import respond
 from breadbox.core.logger import log
@@ -29,85 +36,187 @@ rate_limiter = Limiter(
     enabled=Config.rate_limits.enabled
 )
 
-query_params_blacklist = []
+groups = {
+    "users": 1,
+    "contributors": 2,
+    "admin": 3
+}
 
-if Config.advanced.auth_query:
-    query_params_blacklist.append(Config.advanced.auth_query)
+# Tool for generating and verifying signed URLs
+class HMACSigner:
+    def __init__(self, key: bytes = None):
+        if key:
+            if len(key) < 64:
+                log.warning(
+                    "It is advised to use a key the same size as the hashing algorithm's output"
+                    "in order to achieve the most security."
+                )
+            self.key = key
+        else:
+            self.key = secrets.token_bytes(64)
 
-class PermissionMiddleware(BaseHTTPMiddleware):
-    def __init__(self, *args, user_handler: Callable[[str,], tuple[str, int]] = None, **kwargs):
+    def generate(self, obj: dict) -> str:
+        """
+        Produces an HMAC signature based off a dictionary of information.
+        :param obj: The dictionary to derive the signature from.
+        :return: The signature in url-safe Base64 format, with any '=' omitted.
+        """
+        # Format the dictionary in JSON
+        plaintext = json.dumps(obj, sort_keys=True).encode('utf-8')
+
+        # Generate the signature
+        signature = hmac.new(self.key, plaintext, hashlib.sha512).digest()
+
+        # Format the signature in URL-safe Base64.
+        urlsafe_signature = base64.urlsafe_b64encode(signature).decode('utf-8').rstrip('=')
+
+        return urlsafe_signature
+
+    def verify(self, obj: dict, sig: str) -> bool:
+        """
+        Generates a new signature and compares it to the supplied one.
+        :param obj: The dictionary to derive the signature from.
+        :param sig: The signature to compare the results to.
+        :return: True if the signatures match, otherwise false.
+        """
+        provided_signature = self.generate(obj)
+        return hmac.compare_digest(provided_signature, sig)
+
+
+# Middleware for managing security
+class SecurityMiddleware(BaseHTTPMiddleware):
+    def __init__(self, *args, user_handler: Callable[[str,], tuple[str, int],] = None, signed_url_key: bytes = None, **kwargs):
         self.user_handler = user_handler
+        self.hmac_signer = HMACSigner(key=signed_url_key)
+
         super().__init__(*args, **kwargs)
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if request.url.path.startswith(Config.advanced.protected_prefixes):
-            # Read
-            if request.method in ('GET', 'HEAD',):
-                if resp := self.check_permissions(request, Config.permissions.read):
+            if 'signUrl' in request.query_params.keys():
+                if resp := await self.api_key_auth(request, self.generate_signed_url):
                     return resp
 
-            # Write
-            elif request.method in ('PUT', 'PATCH', 'POST',):
-                if Config.advanced.read_only:
-                    return respond('read_only')
-                elif resp := self.check_permissions(request, Config.permissions.write):
-                    return resp
+                return respond('no_api_key')
 
-            # Delete
-            elif request.method in ('DELETE',):
-                if Config.advanced.read_only:
-                    return respond('read_only')
-                elif resp := self.check_permissions(request, Config.permissions.delete):
-                    return resp
+            elif resp := await self.signature_auth(request, call_next):
+                return resp
+            elif resp := await self.api_key_auth(request, call_next):
+                return resp
 
-            # Other
-            else:
-                if resp := self.check_permissions(request, Config.permissions.other):
-                    return resp
+            return respond('auth_required')
 
         response = await call_next(request)
         return response
 
-    def check_permissions(self, request: Request, permission_group: str) -> Optional[JSONResponse]:
-        if permission_group == 'everyone':
-            return None
+    async def generate_signed_url(self, request: Request) -> JSONResponse:
+        if request.method != 'GET':
+            return respond('signed_url_method')
 
-        elif permission_group == 'nobody':
-            return respond('disabled_feature')
+        expires = int(datetime.now().timestamp()) + (Config.signed_urls.duration * 60)
+
+        signature = self.hmac_signer.generate({
+            "expires": expires,
+            "ip": request.client.host,
+            "url": request.url.path
+        })
+
+        return JSONResponse({
+            "url": "%s?signature=%s&expires=%i" % (request.url.path, signature, expires),
+            "expires_at": datetime.fromtimestamp(expires, tz=timezone.utc).isoformat(timespec='seconds'),
+            "current_time": datetime.now(tz=timezone.utc).isoformat(timespec='seconds')
+        })
+
+    async def api_key_auth(self, request: Request, call_next: RequestResponseEndpoint) -> Optional[Response]:
+        """
+        Utilizes API keys for authentication
+        """
 
         if Config.advanced.auth_header and (api_key := request.headers.get(Config.advanced.auth_header)):
             pass
         elif Config.advanced.auth_cookie and (api_key := request.cookies.get(Config.advanced.auth_cookie)):
             pass
-        elif Config.advanced.auth_query and (api_key := request.query_params.get(Config.advanced.auth_query)):
-            pass
         else:
-            return respond('no_api_key')
+            return None
 
+        # Read
+        if request.method in ('GET', 'HEAD',):
+            permission_group = Config.permissions.read
+
+        # Read only
+        elif Config.advanced.read_only:
+            return respond('read_only')
+
+        # Write
+        elif request.method in ('PUT', 'PATCH', 'POST',):
+            permission_group = Config.permissions.write
+
+        # Delete
+        elif request.method in ('DELETE',):
+            permission_group = Config.permissions.delete
+
+        # Other
+        else:
+            permission_group = Config.permissions.other
+
+        # If the permission is special, do special things.
+        if permission_group == 'everyone':
+            return await call_next(request)
+        elif permission_group == 'nobody':
+            return respond('disabled_feature')
+
+        # Check if API key is valid and has the right permissions
         username, auth_level = self.user_handler(api_key)
         if not username and not auth_level:
             return respond('invalid_api_key')
 
-        if permission_group == 'users':
-            if auth_level >= 1:
-                pass
-            else:
-                return respond('insufficient_permissions')
-
-        elif permission_group == 'contributors':
-            if auth_level >= 2:
-                pass
-            else:
-                return respond('insufficient_permissions')
-
-        elif permission_group == 'admin':
-            if auth_level == 3:
-                pass
-            else:
-                return respond('insufficient_permissions')
-
-        else:
+        if not permission_group in groups.keys():
             raise ValueError("Unknown permission group: '%s'" % permission_group)
 
-        log.info(f"{username}@{request.client.host} -> [{request.method}] {request.url.remove_query_params(query_params_blacklist)}")
-        return None
+        if auth_level < groups[permission_group]:
+            return respond('insufficient_permissions')
+
+        log.info(f"{username}@{request.client.host} -> [{request.method}] {request.url}")
+        return await call_next(request)
+
+    async def signature_auth(self, request: Request, call_next: RequestResponseEndpoint) -> Optional[Response]:
+        """
+        Utilizes signed URLs for authentication
+        """
+
+        if not request.query_params.get('signature'):
+            return None
+
+        if request.method != 'GET':
+            return respond('signed_url_method')
+
+        signature = request.query_params.get('signature')
+        expires = request.query_params.get('expires')
+
+        if not expires and expires.isnumeric():
+            return respond('url_signature_mismatch')
+
+        expires = int(expires)
+
+        if not self.hmac_signer.verify({
+            "expires": expires,
+            "ip": request.client.host,
+            "url": request.url.path
+        }, signature):
+            return respond('url_signature_mismatch')
+
+        now = int(datetime.now().timestamp())
+        max_expires = now + (Config.signed_urls.duration * 60)
+
+        if expires > max_expires:
+            return respond('expires_too_late')
+
+        if now > expires:
+            return respond(
+                'expired_url',
+                expires_at=datetime.fromtimestamp(expires, tz=timezone.utc).isoformat(timespec='seconds'),
+                current_time=datetime.fromtimestamp(now, tz=timezone.utc).isoformat(timespec='seconds')
+            )
+
+        response = await call_next(request)
+        return response
