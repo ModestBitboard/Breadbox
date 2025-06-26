@@ -29,7 +29,7 @@ log.info(f"Using [bold yellow]uvicorn v{uvicorn_version}[/bold yellow] as server
 db = UserDB(CONFIG_PATH / 'users.db')
 
 app = Breadbox(
-    user_db_handler=db.check_key
+    user_db_handler=db
 )
 
 if __name__ == '__main__':

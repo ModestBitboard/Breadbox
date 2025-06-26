@@ -10,6 +10,8 @@ from pathlib import Path
 import hashlib
 import secrets
 
+from typing import Optional
+
 hasher = PasswordHasher()
 
 class User(SQLModel, table=True):
@@ -69,7 +71,7 @@ class UserDB:
 
         return api_key
 
-    def check_key(self, api_key: str):
+    def check_key(self, api_key: str) -> tuple[Optional[str], Optional[int]]:
         """
         Take an API key then check if it's valid.
         If true, return a username and auth level.
@@ -90,6 +92,33 @@ class UserDB:
             return user.name, user.auth_level
         except VerifyMismatchError:
             return None, None
+
+    def get_info(self, user_id: int = None, username: str = None) -> Optional[dict]:
+        """
+        Get information on a user by their ID or username.
+        :param user_id: User's ID
+        :param username: User's name
+        :return: A dict containing user info
+        """
+        with Session(self.engine) as session:
+            if user_id:
+                statement = select(User).where(User.user_id == user_id)
+            elif username:
+                statement = select(User).where(User.name == username)
+            else:
+                return None
+
+            # noinspection PyTypeChecker
+            user = session.exec(statement).first()
+
+            if not user:
+                return None
+
+            return {
+                "username": user.name,
+                "auth_level": user.auth_level,
+                "user_id": user.user_id,
+            }
 
 
 if __name__ == '__main__':

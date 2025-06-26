@@ -21,6 +21,7 @@ from breadbox.core.logger import log
 from breadbox.core.config import Config, CONFIG_PATH
 from breadbox.core.security import SecurityMiddleware, rate_limiter
 from breadbox.core.archive import ArchiveRouter
+from breadbox.core.responses import respond
 
 
 # A helpful variable used to determine where the assets directory is.
@@ -31,8 +32,6 @@ ASSETS_PATH = Path(__file__).absolute().parent.parent / 'assets'
 async def lifespan(app: FastAPI):
     # Generate the path to the archive handlers
     routers_dir = Path('./routers')
-
-    app.tags = []
 
     log.info('Searching for routers in %s' % routers_dir.absolute())
 
@@ -56,6 +55,7 @@ async def lifespan(app: FastAPI):
         log.info(f'Found router: [bold magenta]{path.stem}[/bold magenta]')
 
         # Set up tag metadata
+        # noinspection PyUnresolvedReferences
         app.tags.append({
             "name": path.stem,
             "description": plugin.__doc__
@@ -79,14 +79,15 @@ async def lifespan(app: FastAPI):
 class Breadbox(FastAPI):
     def __init__(
             self,
-            user_db_handler: Callable[[str,], tuple[str, int]],
+            user_db_handler,
             *args,
             **kwargs
     ):
         """
         A self-generating WSGI application built for archives
 
-        :param user_db_handler: Function for handling API keys. Takes in an API key and outputs a username and an auth level. Returns (None, None) if the provided API key is invalid.
+        :param user_db_handler: A class for interfacing with the user database.
+            Look at https://github.com/ModestBitboard/Breadbox/blob/master/users.py for an example.
         """
         # Aliases for convenience
         self.config = Config
@@ -111,8 +112,15 @@ class Breadbox(FastAPI):
             **kwargs
         )
 
+        self.user_db_handler = user_db_handler
+
         # Initialize some variables
-        self.tags = []
+        self.tags = [
+            {
+                "name": "misc",
+                "description": "Miscellaneous built-in utilities"
+            }
+        ]
 
         # Install rate limiter
         self.state.limiter = rate_limiter
@@ -121,7 +129,7 @@ class Breadbox(FastAPI):
 
         # Install security middleware
         # noinspection PyTypeChecker
-        self.add_middleware(SecurityMiddleware, user_handler=user_db_handler)
+        self.add_middleware(SecurityMiddleware, user_handler=self.user_db_handler.check_key)
 
         # Mount static directory
         self.mount('/static', StaticFiles(directory=ASSETS_PATH), name="static")
@@ -132,6 +140,14 @@ class Breadbox(FastAPI):
             self.favicon_redirect,
             methods=['GET'],
             include_in_schema=False
+        )
+
+        # Add user info endpoint
+        self.add_api_route(
+            '/user/{id_or_username}',
+            self.user_information,
+            methods=['GET'],
+            tags=['misc']
         )
 
         if Config.advanced.integrated_docs:
@@ -152,6 +168,16 @@ class Breadbox(FastAPI):
             self.state.limiter.exempt(self.swagger_ui_html)
             self.state.limiter.exempt(get_swagger_ui_oauth2_redirect_html)
 
+    def user_information(self, id_or_username: str):
+        if id_or_username.isnumeric():
+            user = self.user_db_handler.get_info(user_id=int(id_or_username))
+        else:
+            user = self.user_db_handler.get_info(username=id_or_username)
+
+        if not user:
+            return respond('user_not_found')
+        else:
+            return user
 
     @staticmethod
     def favicon_redirect() -> RedirectResponse:

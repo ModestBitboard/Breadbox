@@ -80,6 +80,12 @@ RESPONSES = {
         "details": "The media requested was not found it the archive."
     },
 
+    "user_not_found": {
+        "status": 404,
+        "message": "Not Found",
+        "details": "The requested user was not found."
+    },
+
     "not_found": {
         "status": 404,
         "message": "Not Found",
