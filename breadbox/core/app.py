@@ -1,7 +1,8 @@
 """
 A WSGI server built using FastAPI
 """
-from fastapi import FastAPI, Request, APIRouter
+from fastapi import FastAPI, Request, APIRouter, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
@@ -15,7 +16,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 import importlib.util
 
-from typing import Callable, Dict, Any
+from typing import Dict, Any
 
 from breadbox.core.logger import log
 from breadbox.core.config import Config, CONFIG_PATH
@@ -168,6 +169,11 @@ class Breadbox(FastAPI):
             self.state.limiter.exempt(self.swagger_ui_html)
             self.state.limiter.exempt(get_swagger_ui_oauth2_redirect_html)
 
+        # Make errors consistent with Breadbox status messages
+        # noinspection PyTypeChecker
+        self.add_exception_handler(RequestValidationError, self.validation_exception_handler)
+        self.add_respond_handler(404, 'not_found')
+
     def user_information(self, id_or_username: str):
         if id_or_username.isnumeric():
             user = self.user_db_handler.get_info(user_id=int(id_or_username))
@@ -178,6 +184,24 @@ class Breadbox(FastAPI):
             return respond('user_not_found')
         else:
             return user
+
+    def add_respond_handler(self, exc_class_or_status_code: int | type[Exception], response_code: str):
+        # noinspection PyUnusedLocal
+        def handler(request, exc):
+            return respond(response_code)
+
+        self.add_exception_handler(exc_class_or_status_code, handler)
+
+    # noinspection PyUnusedLocal
+    @staticmethod
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        err = exc.errors()[0]
+        return respond(
+            'validation_error',
+            location=err['loc'],
+            issue=err['msg'],
+            type=err['type']
+        )
 
     @staticmethod
     def favicon_redirect() -> RedirectResponse:

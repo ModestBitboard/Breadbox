@@ -14,6 +14,12 @@ RESPONSES = {
         "details": "The file uploaded does not meet the expected MIME type."
     },
 
+    "validation_error": {
+        "status": 422,
+        "message": "Unprocessable Content",
+        "details": "An error was found while validating your request, so the server refuses to process it."
+    },
+
     "no_api_key": {
         "status": 401,
         "message": "Unauthorized",

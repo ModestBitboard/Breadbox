@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 from breadbox import ArchiveRouter
+from breadbox.core.responses import respond
 
 class AnimeExternalInfo(BaseModel):
     myanimelist: Optional[str] = Field(
@@ -20,7 +21,7 @@ class AnimeExternalInfo(BaseModel):
     )
     anilist: Optional[str] = Field(
         default=None,
-        description='Link to AniList.co',
+        description='Link to the anime on AniList.co',
         examples=['https://anilist.co/anime/105914']
     )
 
@@ -82,9 +83,9 @@ def anime_logo():
     """Logo of the anime"""
     return 'logo.png'
 
-@router.image('/media/{episode}/thumbnail')
+@router.image('/media/{media}/thumbnail')
 def anime_media_thumbnail(media: str):
-    """The thumbnail for a piece of episode or bonus content of the anime"""
+    """The thumbnail for an episode or piece of bonus content of the anime"""
     if media.isnumeric():
         return 'EP-%02d.png' % int(media)
     else:
@@ -106,33 +107,38 @@ def list_anime_media(id: int):
     """
 
     if not router.archive.check_item(id):
-        raise FileNotFoundError
+        return respond('not_in_archive')
 
     # List episodes
     episodes = []
-
-    for file in (router.archive.path / str(id) / 'media').iterdir():
-        if not file.stem.isnumeric():
-            continue
-        if file.resolve().is_file():
-            episodes.append(int(file.stem))
-
-    episodes.sort()
-
-    # List any bonus content
-    bonus_dir = (router.archive.path / str(id) / 'media' / 'bonus').resolve()
     bonus = []
 
-    if bonus_dir.is_dir():
-        for file in bonus_dir.iterdir():
-            if file.stem.startswith(('.', '_')):
+    root_path = (router.archive.path / str(id) / 'media').resolve()
+
+    if root_path.is_dir():
+        for file in root_path.iterdir():
+            if file.suffix != '.mkv':
                 continue
-            if not file.stem.isupper():
+            if not file.stem.isnumeric():
                 continue
             if file.resolve().is_file():
-                bonus.append(file.stem)
+                episodes.append(int(file.stem))
 
-        bonus.sort()
+        episodes.sort()
+
+        # List any bonus content
+        bonus_dir = (root_path / 'bonus').resolve()
+
+        if bonus_dir.is_dir():
+            for file in bonus_dir.iterdir():
+                if file.stem.startswith(('.', '_')):
+                    continue
+                if not file.stem.isupper():
+                    continue
+                if file.resolve().is_file():
+                    bonus.append(file.stem)
+
+            bonus.sort()
 
     return {
         "episodes": episodes,
