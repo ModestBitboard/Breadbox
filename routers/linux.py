@@ -36,9 +36,9 @@ class LinuxModel(BaseModel):
         description='The release version',
         examples=['24.04.2']
     )
-    torrent: Optional[LinuxTorrentInfo] = Field(
+    torrents: Optional[list[LinuxTorrentInfo]] = Field(
         default=None,
-        description='Information about the torrent the ISO is from'
+        description='Information about the torrents the ISO is from'
     )
 
 
