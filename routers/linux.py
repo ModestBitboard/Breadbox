@@ -34,7 +34,7 @@ class LinuxModel(BaseModel):
     version: Optional[str] = Field(
         default=None,
         description='The release version',
-        examples=[['24.04.2']]
+        examples=['24.04.2']
     )
     torrent: Optional[LinuxTorrentInfo] = Field(
         default=None,
