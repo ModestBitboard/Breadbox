@@ -34,11 +34,11 @@ class LinuxModel(BaseModel):
     version: Optional[str] = Field(
         default=None,
         description='The release version',
-        examples=[['24.04.2']]
+        examples=['24.04.2']
     )
-    torrent: Optional[LinuxTorrentInfo] = Field(
+    torrents: Optional[list[LinuxTorrentInfo]] = Field(
         default=None,
-        description='Information about the torrent the ISO is from'
+        description='Information about the torrents the ISO is from'
     )
 
 
