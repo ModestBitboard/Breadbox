@@ -4,7 +4,7 @@ aiofiles~=24.1.0
 slowapi~=0.1.9
 pydantic~=2.11.4
 toml~=0.10.2
-starlette~=0.47.2
+starlette~=0.46.2
 
 # app
 sqlmodel~=0.0.24
