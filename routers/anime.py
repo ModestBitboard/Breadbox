@@ -31,6 +31,11 @@ class AnimeTorrentInfo(BaseModel):
         description='Magnet link of the torrent this media is from',
         examples=['magnet:?xt=urn:btih:692aab53b69012278079b5983c75daff8b8c444f...']
     )
+    file: Optional[str] = Field(
+        default=None,
+        description='Link to .torrent file',
+        examples=['https://nyaa.si/download/1557245.torrent']
+    )
     url: Optional[str] = Field(
         default=None,
         description='Link to torrent page (Nyaa.si usually)',
@@ -57,9 +62,9 @@ class AnimeModel(BaseModel):
         default=None,
         description='Links to the anime on other websites'
     )
-    torrent: Optional[AnimeTorrentInfo] = Field(
+    torrent: Optional[list[AnimeTorrentInfo]] = Field(
         default=None,
-        description='Information about the torrent the media is from'
+        description='Information about the torrents the media is from'
     )
 
 
