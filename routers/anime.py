@@ -62,7 +62,7 @@ class AnimeModel(BaseModel):
         default=None,
         description='Links to the anime on other websites'
     )
-    torrent: Optional[list[AnimeTorrentInfo]] = Field(
+    torrents: Optional[list[AnimeTorrentInfo]] = Field(
         default=None,
         description='Information about the torrents the media is from'
     )
