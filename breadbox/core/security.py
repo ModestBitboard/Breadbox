@@ -193,7 +193,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         signature = request.query_params.get('signature')
         expires = request.query_params.get('expires')
 
-        if not expires and expires.isnumeric():
+        if not expires or not expires.isnumeric():
             return respond('url_signature_mismatch')
 
         expires = int(expires)
