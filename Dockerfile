@@ -15,6 +15,7 @@ COPY users.py .
 COPY requirements.txt .
 COPY breadctl /usr/local/bin
 
+RUN ln -s /app/users.py /usr/local/bin/users.py
 RUN pip install -r requirements.txt
 
 ENV BREADBOX_CONFIG="/config"
