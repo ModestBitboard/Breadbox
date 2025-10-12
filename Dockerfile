@@ -13,6 +13,7 @@ COPY routers ./routers
 COPY main.py .
 COPY users.py .
 COPY requirements.txt .
+COPY breadctl /usr/local/bin
 
 RUN pip install -r requirements.txt
 
