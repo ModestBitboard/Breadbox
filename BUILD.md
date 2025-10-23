@@ -9,7 +9,7 @@ I personally use `/usr/share/breadbox`, but `/etc/breadbox` also makes sense. Th
 just make sure you can easily locate it.
 
 ## Step 2: Create archive directory
-Breadbox won't start unless it has a place to store it's archives. I use an internal HDD mounted to `/warehouse` in my own setup,
+Breadbox won't start unless it has a place to store its archives. I use an internal HDD mounted to `/warehouse` in my own setup,
 with a directory `/warehouse/archives` for Breadbox archives. I then mount that to `/archives` within the container.
 
 ## Step 3: compose.yml
@@ -63,7 +63,9 @@ You can gain access by generating an admin API key.
 
 You'll either need to access your container's console, or utilize the `users.py` module to edit the `users.db` file in your config directory.
 
+In the future, you'll be able to use `breadctl` inside or outside the container, as long as you tell it where the config files are stored.
+
 I'm not really smart enough to do a good job at explaining setting up an account. So instead, please read through the `users.py` file for references.
-It should be easy enough to use. You'll need to either create a virtual environment an install it's requirements, or enter the container and use the console to do it.
+It should be easy enough to use. You'll need to either create a virtual environment and install its requirements, or enter the container and use the console to do it.
 
 **Make sure to store your API key somewhere safe. Breadbox stores all API keys as Argon2 hashes, so you won't be able to see it again after you generate it!**

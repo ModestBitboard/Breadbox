@@ -1,29 +1,29 @@
 # Breadbox
-Breadbox is a REST API for anime, manga, games, and linux ISOs (for some reason).
+Breadbox is a REST API for accessing archived media and its metadata.
 
-It supports signed URLs, API keys, users, and a whole bunch more little things like that.
+It supports signed URLs, API keys, users, and a bunch more little things like that.
 
 You can easily add your own archive to your Breadbox by creating a new python file in the `routers` directory and using some of the built-in tools.
 
-# Why?
-*"Who I am is in these episodes" - AJR, "Netflix Trip"*
+My current instance of Breadbox includes archives for anime, manga, games, and linux ISOs.
 
-Put simply, I've seen a lot of anime and read a little bit of manga. I enjoy it both as a medium and a way to unwind. I also appreciate it for the tough times it's gotten me through.
-I know it's not likely, but the concept of these pieces of my youth becoming lost media, or suffering a similar fate, scares me.
-With DRM and greedy companies fighting over who can milk the most profits out of their customers, I feel less like a fan and more like livestock.
+## Tools
+I've created a few tools for interacting with your Breadbox server.
 
-I made Breadbox because I want to preserve those pieces of media that made me--and continue to make me--who I am.
+- [Breadbox-Py](https://github.com/ModestBitboard/Breadbox-Python) - Python API with special features
+- [Itadakimasu](https://github.com/ModestBitboard/Itadakimasu) - Anime streaming client
 
-# That's cool! Is there any way I can access it?
-At this point in time, not officially. I haven't opened Breadbox up to the public yet for a multitude of reasons. One of which is not wanting to get sued by some schmuck copyright troll.
-I might at some point. Perhaps I'll create a page where people can apply to gain access, allowing me to prevent malicious parties from gaining access to the archive and it's users.
+## breadctl
+Pronounced as "bread control," breadctl is a work-in-progress CLI for Breadbox allowing you to manage users, archives, and routers.
 
-I'd love to make this project even bigger. Opening this up to the public would invite curious minds to attempt their own improvements, interfaces, and archives.
-But right now, unfortunately, it'll remain closed. However, everyone is welcome to use this project's code for their own archives. Compitition only makes us stronger.
+Breadctl is currently being written in Python, but I'm considering porting it to golang and making it its own tool.
 
-If you pester me about it, by making issues or messaging me saying "Akito, can I have access?" then I might give you access if you're harmless and kind. Just don't harrass or spam me about it, okay? I'm only one person.
+Expect this particular feature to change a lot as it gets developed.
 
-If you're going to take time out of both of our days to bug me about it, then please, at least take the next section into consideration.
+## Running in a Container
+Breadbox was built with the intention of being run containerized. While it can be run bare-metal, I'd suggest containerization for easy updating and stability.
+
+Some poorly-written directions for containerization exist in [BUILD.md](BUILD.md)
 
 ## Support
 If you liked this project, go ahead and give it a star. And if you really ***really*** like it, consider sending me a tip.
